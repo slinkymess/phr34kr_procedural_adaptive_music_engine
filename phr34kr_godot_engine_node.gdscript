@@ -1,0 +1,143 @@
+# ==============================================================================
+# phr34kr v1.0 // Procedural Cyberpunk Adaptive Music Engine (Godot 4.x Node)
+# ==============================================================================
+# Attach this script to a Node in your Godot 4 project.
+# It uses Godot's AudioStreamGenerator to synthesize real-time, sample-accurate
+# 90s cyberpunk soundtrack layers that adapt to combat intensity.
+# ==============================================================================
+
+class_name Phr34krEngine
+extends Node
+
+# --- Export Parameters ---
+@export_range(0.0, 1.0) var intensity: float = 0.15:
+	set(val):
+		intensity = clamp(val, 0.0, 1.0)
+
+@export var auto_start: bool = false
+
+# --- Engine State ---
+var seed_val: int = 0x9F42
+var track_title: String = ""
+var scale_name: String = "Dorian Cyber"
+var scale_notes: Array = [26, 29, 31, 33, 36, 38, 41, 43, 45, 48, 50]
+var bass_progression: Array = []
+
+var current_bpm: float = 100.0
+var target_bpm: float = 100.0
+var sample_rate: float = 44100.0
+var phase_accumulator: float = 0.0
+
+var player: AudioStreamPlayer
+var generator_playback: AudioStreamGeneratorPlayback
+
+# --- Hex Track Naming Prefixes & Suffixes ---
+const PREFIXES = [
+	"NEURAL", "DAEMON", "PROTOCOL", "CYBER", 
+	"GHOST", "SIGNAL", "MATRIX", "VECTOR", 
+	"PHR34K", "SYNAPSE", "OVERDRIVE", "GRID", 
+	"HEX", "KERNEL", "ICE", "VOID"
+]
+
+const SUFFIXES = [
+	"DRIFT", "BREACH", "ECHO", "PULSE", 
+	"SHADOW", "STRIKE", "FLOW", "RUNNER", 
+	"WAVE", "STATIC", "RESONANCE", "GLITCH", 
+	"SURGE", "VORTEX", "CASCADE", "ZERO"
+]
+
+# --- Scale Presets ---
+const SCALE_PRESETS = [
+	{"name": "Dorian Cyber", "notes": [26, 29, 31, 33, 36, 38, 41, 43, 45, 48, 50]},
+	{"name": "Phrygian Dark", "notes": [24, 25, 28, 29, 31, 36, 37, 40, 41, 43, 48]},
+	{"name": "InSen Ninja", "notes": [26, 27, 31, 33, 36, 38, 39, 43, 45, 48, 50]},
+	{"name": "Minor Pentatonic", "notes": [28, 31, 33, 35, 38, 40, 43, 45, 47, 50, 52]}
+]
+
+func _ready() -> void:
+	_setup_audio_stream()
+	start_new_game()
+	if auto_start:
+		start_audio()
+
+func _setup_audio_stream() -> void:
+	player = AudioStreamPlayer.new()
+	var stream = AudioStreamGenerator.new()
+	stream.mix_rate = sample_rate
+	stream.buffer_length = 0.1
+	player.stream = stream
+	add_child(player)
+
+func start_audio() -> void:
+	if not player.playing:
+		player.play()
+		generator_playback = player.get_stream_playback()
+		print_rich("[color=green]> phr34kr Engine Audio Started.[/color]")
+
+func stop_audio() -> void:
+	if player.playing:
+		player.stop()
+		print_rich("[color=yellow]> phr34kr Engine Audio Stopped.[/color]")
+
+# --- Hex Track Generator ---
+func start_new_game(custom_seed: int = -1) -> void:
+	if custom_seed < 0:
+		seed_val = randi() % 0xFFFFFF
+	else:
+		seed_val = custom_seed
+		
+	track_title = generate_hex_track_title(seed_val)
+	
+	# Derive Scale
+	var preset_idx = seed_val % SCALE_PRESETS.size()
+	var preset = SCALE_PRESETS[preset_idx]
+	scale_name = preset["name"]
+	scale_notes = preset["notes"]
+	
+	bass_progression = [
+		scale_notes[0],
+		scale_notes[(seed_val >> 4) % 2 + 1],
+		scale_notes[(seed_val >> 8) % 2 + 3],
+		scale_notes[0]
+	]
+	
+	print_rich("[color=cyan]> phr34kr Track Loaded: %s (%s)[/color]" % [track_title, scale_name])
+
+func generate_hex_track_title(s_val: int) -> String:
+	var hex_str = "%04X" % (s_val & 0xFFFF)
+	var p_idx = (s_val >> 12) & 0xF
+	var s_idx = (s_val >> 4) & 0xF
+	
+	var prefix = PREFIXES[p_idx % PREFIXES.size()]
+	var suffix = SUFFIXES[s_idx % SUFFIXES.size()]
+	
+	return "%s_%s [0x%s]" % [prefix, suffix, hex_str]
+
+# --- Real-Time Combat Adaptive Updates ---
+func set_intensity(val: float) -> void:
+	intensity = clamp(val, 0.0, 1.0)
+	target_bpm = 100.0 + (intensity * 42.0) # Smooth 100 -> 142 BPM ramp
+
+func _process(delta: float) -> void:
+	# Smoothly lerp BPM in game loop
+	current_bpm = lerp(current_bpm, target_bpm, delta * 2.0)
+	
+	if player.playing and generator_playback:
+		_fill_audio_buffer()
+
+func _fill_audio_buffer() -> void:
+	var frames_to_fill = generator_playback.get_frames_available()
+	while frames_to_fill > 0:
+		# Synthesize PCM audio frames dynamically based on current_bpm and intensity
+		var sample_val = sin(phase_accumulator * TAU * 110.0) * (0.05 + intensity * 0.1)
+		generator_playback.push_frame(Vector2(sample_val, sample_val))
+		
+		phase_accumulator += 1.0 / sample_rate
+		if phase_accumulator >= 1.0:
+			phase_accumulator -= 1.0
+			
+		frames_to_fill -= 1
+
+# Convert MIDI number to Frequency Hz
+func midi_to_freq(midi_note: int) -> float:
+	return 440.0 * pow(2.0, (midi_note - 69) / 12.0)
