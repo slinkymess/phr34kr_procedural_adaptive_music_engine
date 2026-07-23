@@ -53,3 +53,4 @@ func _on_player_combo_hit(combo_count: int):
 
 
 License
+GNU General Public License v3.0
