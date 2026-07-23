@@ -1,4 +1,4 @@
-# phr34kr_procedural_adaptive_music_engine
+# phr34kr Procedural Adaptive Music Engine
 phr34kr // Procedural Adaptive Music Engine
 phr34kr (v1.0) is a lightweight, zero-dependency procedural soundtrack engine designed for cyberpunk hacker fighting games and high-intensity action titles.
 Instead of playing static audio tracks, phr34kr procedurally generates 90s-inspired atmospheric soundtracks from 32-Bit Hex Seeds (0x...) and seamlessly evolves the music in real time based on a gameplay Combat Intensity (0% to 100%) signal.
