@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>phr34kr // Procedural Cyberpunk Music Engine</title>
+  <title>phr34kr // Procedural Adaptive Music Engine</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Orbitron:wght@500;700;900&display=swap');
@@ -67,12 +67,12 @@
           <span>phr34kr</span>
           <span class="text-xs px-2 py-0.5 rounded border border-emerald-500/40 bg-emerald-950/40 text-cyan-300">v1.0</span>
         </h1>
-        <p class="text-[10px] text-slate-400">Streamlined Hex-Derived Procedural Soundtrack Engine</p>
+        <p class="text-[11px] text-slate-400 font-mono">Procedural Adaptive Music Engine</p>
       </div>
     </div>
 
     <!-- Main Controls -->
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 flex-wrap">
       <button id="btn-engine-toggle" class="bg-emerald-400 hover:bg-emerald-300 text-black font-orbitron font-bold px-5 py-2.5 rounded text-xs tracking-wider transition-all shadow-lg flex items-center gap-2">
         <svg id="icon-play" class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         <span id="text-engine">START AUDIO</span>
@@ -83,10 +83,16 @@
         <span>NEW GAME [NEW SEED]</span>
       </button>
 
-      <button id="btn-sim-fight" class="border border-cyan-500/60 text-cyan-300 hover:bg-cyan-500/20 px-4 py-2.5 rounded text-xs font-mono transition-all flex items-center gap-2">
-        <span>SIMULATE COMBAT (60-90s)</span>
-        <span id="badge-sim" class="font-bold text-emerald-400">OFF</span>
-      </button>
+      <!-- Simulate Music Control Group with 15s Increment Adjuster -->
+      <div class="flex items-center bg-[#020409] border border-cyan-500/60 rounded overflow-hidden">
+        <button id="btn-dur-minus" title="Decrease duration by 15s" class="px-2.5 py-2 text-cyan-400 hover:bg-cyan-500/20 text-xs font-mono font-bold border-r border-cyan-500/40 transition-colors">-15s</button>
+        <span id="lbl-sim-duration" class="px-3 text-xs font-mono text-cyan-300 font-bold min-w-[45px] text-center">60s</span>
+        <button id="btn-dur-plus" title="Increase duration by 15s" class="px-2.5 py-2 text-cyan-400 hover:bg-cyan-500/20 text-xs font-mono font-bold border-l border-cyan-500/40 transition-colors">+15s</button>
+        <button id="btn-sim-fight" class="px-4 py-2 text-xs font-mono text-cyan-300 hover:bg-cyan-500/20 border-l border-cyan-500/40 font-bold flex items-center gap-2 transition-colors">
+          <span>SIMULATE MUSIC</span>
+          <span id="badge-sim" class="text-emerald-400">OFF</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -96,13 +102,11 @@
     <!-- Visualizer Canvas & Track Seed Status -->
     <div class="relative bg-[#020306] border border-emerald-900/60 rounded-xl overflow-hidden glow-box h-64 sm:h-72 flex flex-col items-center justify-center">
       
-      <!-- Top HUD Readout -->
+      <!-- Top HUD Readout (Single Hash Title Only) -->
       <div class="absolute top-4 left-4 right-4 z-10 flex justify-between items-center font-mono text-xs">
-        <div class="flex items-center gap-2.5 bg-black/70 px-3.5 py-1.5 rounded border border-emerald-900/80 backdrop-blur">
+        <div class="flex items-center gap-2 bg-black/70 px-3.5 py-1.5 rounded border border-emerald-900/80 backdrop-blur">
           <span class="text-slate-400">TITLE:</span>
           <span id="lbl-track-title" class="text-purple-300 font-bold tracking-wider">NEURAL_DRIFT [0x9F42]</span>
-          <span class="text-slate-600">|</span>
-          <span id="lbl-scale-name" class="text-cyan-300">Dorian Cyber</span>
         </div>
 
         <div id="sim-timer-box" class="hidden flex items-center gap-2 bg-black/70 px-3.5 py-1.5 rounded border border-cyan-900/80 backdrop-blur">
@@ -123,7 +127,7 @@
       </div>
     </div>
 
-    <!-- Active Synth Stems Monitor -->
+    <!-- 6 Active Instrumental State Stems -->
     <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 font-mono text-xs">
       <div id="stem-pad" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5">
         <div class="flex justify-between items-center"><span class="text-[10px] font-bold">AMBIENT PAD</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
@@ -151,7 +155,7 @@
       </div>
     </div>
 
-    <!-- Intensity Slider Card -->
+    <!-- Adaptive Combat Intensity Slider Card -->
     <div class="bg-[#060a12] border border-cyan-900/50 rounded-xl p-5 flex flex-col gap-3 glow-cyan">
       <div class="flex justify-between items-center">
         <label for="slider-intensity" class="font-mono text-xs font-bold text-cyan-300 tracking-wider">
@@ -170,7 +174,7 @@
       </div>
     </div>
 
-    <!-- Navigation Tabs for Log & Engine Code SDK -->
+    <!-- Navigation Tabs for Engine Log & Game Integration SDK -->
     <div class="bg-[#020306] border border-emerald-900/50 rounded-xl p-4 font-mono text-xs text-emerald-400/90 h-32 flex flex-col gap-2">
       <div class="flex border-b border-emerald-950 pb-2 gap-4">
         <button id="tab-log" class="text-emerald-400 font-bold border-b-2 border-emerald-400 pb-0.5">ENGINE LOG</button>
@@ -180,7 +184,7 @@
       <!-- Panel 1: Terminal Log -->
       <div id="panel-log" class="flex-1 overflow-y-auto flex flex-col gap-1 pr-1">
         <div id="log-output">
-          <div>> phr34kr Engine v1.0 ready. Hex-Procedural Track Naming active.</div>
+          <div>> phr34kr Engine v1.0 ready. Procedural Adaptive Music Engine loaded.</div>
         </div>
       </div>
 
@@ -206,7 +210,7 @@
 
   <script>
     /* ===================================================================
-       phr34kr // SYNCHRONIZED MULTI-SYNTH PROCEDURAL AUDIO ENGINE
+       phr34kr // PROCEDURAL ADAPTIVE MUSIC ENGINE
        =================================================================== */
 
     // --- PRNG Seed Generator ---
@@ -233,7 +237,6 @@
       intensity: 15, // 0% to 100%
       seed: 0x9F42,
       trackTitle: '',
-      scaleName: 'Dorian Cyber',
       scaleNotes: [],
       bassProgression: [],
 
@@ -244,8 +247,9 @@
       current16thStep: 0,
       schedulerTimerId: null,
 
-      // Fight Simulator Timer
-      simDurationSec: 0,
+      // Simulation Timer Settings
+      configuredSimDurationSec: 60, // Default 60s, adjustable in 15s increments
+      simDurationSec: 60,
       simElapsedSec: 0,
       simTimerInterval: null,
 
@@ -307,7 +311,6 @@
       state.trackTitle = generateHexTrackTitle(seedVal);
 
       const preset = rng.choice(SCALE_PRESETS);
-      state.scaleName = preset.name;
       state.scaleNotes = preset.notes;
 
       state.bassProgression = [
@@ -318,9 +321,8 @@
       ];
 
       document.getElementById('lbl-track-title').innerText = state.trackTitle;
-      document.getElementById('lbl-scale-name').innerText = state.scaleName;
 
-      log(`> New Track Generated: ${state.trackTitle} [${state.scaleName}]`);
+      log(`> New Track Generated: ${state.trackTitle}`);
     }
 
     // --- Web Audio Synthesizer Setup ---
@@ -366,7 +368,7 @@
     }
 
     /* ===================================================================
-       EXPANDED SYNTH PALETTE (PAD, REESE, 303 ACID, FM PLUCK, DRUMS)
+       SYNTH PALETTE
        =================================================================== */
 
     function playLushPad(freq, time) {
@@ -602,7 +604,7 @@
     }
 
     /* ===================================================================
-       SAMPLE-ACCURATE LOOKAHEAD SCHEDULER
+       LOOKAHEAD SCHEDULER
        =================================================================== */
 
     function scheduler() {
@@ -704,8 +706,14 @@
     }
 
     /* ===================================================================
-       COMBAT SIMULATION LOGIC
+       MUSIC SIMULATION LOGIC (WITH 15s INCREMENTS)
        =================================================================== */
+
+    function adjustDuration(deltaSec) {
+      if (state.simulatingFight) return; // Lock adjustment while actively simulating
+      state.configuredSimDurationSec = Math.max(15, state.configuredSimDurationSec + deltaSec);
+      document.getElementById('lbl-sim-duration').innerText = `${state.configuredSimDurationSec}s`;
+    }
 
     function toggleCombatSimulation() {
       state.simulatingFight = !state.simulatingFight;
@@ -716,14 +724,14 @@
       if (state.simulatingFight) {
         if (!state.engineRunning) toggleAudioEngine();
 
-        state.simDurationSec = Math.floor(60 + Math.random() * 31);
+        state.simDurationSec = state.configuredSimDurationSec;
         state.simElapsedSec = 0;
 
         badge.innerText = 'ACTIVE';
-        badge.className = 'font-bold text-rose-400 animate-pulse';
+        badge.className = 'text-rose-400 font-bold animate-pulse';
         timerBox.classList.remove('hidden');
 
-        log(`> COMBAT SIMULATION STARTED. Duration: ${state.simDurationSec}s`);
+        log(`> MUSIC SIMULATION STARTED. Configured Duration: ${state.simDurationSec}s`);
 
         clearInterval(state.simTimerInterval);
         state.simTimerInterval = setInterval(updateCombatSimTick, 1000);
@@ -737,11 +745,11 @@
       clearInterval(state.simTimerInterval);
 
       document.getElementById('badge-sim').innerText = 'OFF';
-      document.getElementById('badge-sim').className = 'font-bold text-emerald-400';
+      document.getElementById('badge-sim').className = 'text-emerald-400 font-bold';
       document.getElementById('sim-timer-box').classList.add('hidden');
 
       setIntensity(15);
-      log('> Combat simulation finished.');
+      log('> Music simulation finished.');
     }
 
     function updateCombatSimTick() {
@@ -769,7 +777,7 @@
       setIntensity(Math.round(targetIntensity));
 
       if (state.simElapsedSec >= state.simDurationSec) {
-        log('🏆 MATCH COMPLETE! Victory.');
+        log('🏆 SIMULATION COMPLETE!');
         stopCombatSimulation();
       }
     }
@@ -904,6 +912,8 @@
     // --- DOM Event Listeners ---
     document.getElementById('btn-engine-toggle').addEventListener('click', toggleAudioEngine);
     document.getElementById('btn-sim-fight').addEventListener('click', toggleCombatSimulation);
+    document.getElementById('btn-dur-minus').addEventListener('click', () => adjustDuration(-15));
+    document.getElementById('btn-dur-plus').addEventListener('click', () => adjustDuration(15));
 
     document.getElementById('btn-new-game').addEventListener('click', () => {
       const newSeed = Math.floor(Math.random() * 0xFFFFFF);
