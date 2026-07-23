@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>phr34kr // Procedural Cyberpunk Music Engine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Orbitron:wght@500;700;900&display=swap');
+
+    body {
+      font-family: 'Fira Code', monospace;
+      background-color: #030408;
+      color: #00ffaa;
+      overflow-x: hidden;
+    }
+
+    .font-orbitron {
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    /* CRT Overlay effect */
+    .crt-overlay::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%);
+      background-size: 100% 4px;
+      z-index: 20;
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    .glow-box {
+      box-shadow: 0 0 15px rgba(0, 255, 170, 0.15), inset 0 0 15px rgba(0, 255, 170, 0.05);
+    }
+
+    .glow-cyan {
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
+    }
+
+    input[type=range] {
+      accent-color: #06b6d4;
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #060910;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #00ffaa;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="crt-overlay min-h-screen flex flex-col bg-[#030408] text-slate-200">
+
+  <!-- Streamlined Header -->
+  <header class="border-b border-emerald-900/50 bg-[#060a12]/90 px-6 py-4 flex flex-wrap items-center justify-between gap-4 z-30">
+    <div class="flex items-center gap-3">
+      <div id="status-indicator" class="w-3.5 h-3.5 rounded-full bg-slate-600"></div>
+      <div>
+        <h1 class="font-orbitron font-bold text-xl text-emerald-400 tracking-wider flex items-center gap-2">
+          <span>phr34kr</span>
+          <span class="text-xs px-2 py-0.5 rounded border border-emerald-500/40 bg-emerald-950/40 text-cyan-300">v1.0</span>
+        </h1>
+        <p class="text-[10px] text-slate-400">Streamlined Hex-Derived Procedural Soundtrack Engine</p>
+      </div>
+    </div>
+
+    <!-- Main Controls -->
+    <div class="flex items-center gap-3">
+      <button id="btn-engine-toggle" class="bg-emerald-400 hover:bg-emerald-300 text-black font-orbitron font-bold px-5 py-2.5 rounded text-xs tracking-wider transition-all shadow-lg flex items-center gap-2">
+        <svg id="icon-play" class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <span id="text-engine">START AUDIO</span>
+      </button>
+
+      <button id="btn-new-game" class="border border-purple-500/60 text-purple-300 hover:bg-purple-500/20 px-4 py-2.5 rounded text-xs font-mono transition-all flex items-center gap-2 font-bold">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        <span>NEW GAME [NEW SEED]</span>
+      </button>
+
+      <button id="btn-sim-fight" class="border border-cyan-500/60 text-cyan-300 hover:bg-cyan-500/20 px-4 py-2.5 rounded text-xs font-mono transition-all flex items-center gap-2">
+        <span>SIMULATE COMBAT (60-90s)</span>
+        <span id="badge-sim" class="font-bold text-emerald-400">OFF</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main View Area -->
+  <main class="flex-1 max-w-[1200px] w-full mx-auto p-4 sm:p-6 flex flex-col gap-5 justify-center">
+
+    <!-- Visualizer Canvas & Track Seed Status -->
+    <div class="relative bg-[#020306] border border-emerald-900/60 rounded-xl overflow-hidden glow-box h-64 sm:h-72 flex flex-col items-center justify-center">
+      
+      <!-- Top HUD Readout -->
+      <div class="absolute top-4 left-4 right-4 z-10 flex justify-between items-center font-mono text-xs">
+        <div class="flex items-center gap-2.5 bg-black/70 px-3.5 py-1.5 rounded border border-emerald-900/80 backdrop-blur">
+          <span class="text-slate-400">TITLE:</span>
+          <span id="lbl-track-title" class="text-purple-300 font-bold tracking-wider">NEURAL_DRIFT [0x9F42]</span>
+          <span class="text-slate-600">|</span>
+          <span id="lbl-scale-name" class="text-cyan-300">Dorian Cyber</span>
+        </div>
+
+        <div id="sim-timer-box" class="hidden flex items-center gap-2 bg-black/70 px-3.5 py-1.5 rounded border border-cyan-900/80 backdrop-blur">
+          <span class="text-cyan-400">TIMER:</span>
+          <span id="lbl-timer" class="text-cyan-300 font-bold">00:00</span>
+        </div>
+      </div>
+
+      <!-- Canvas Visualizer Ring -->
+      <canvas id="canvas-vis" class="w-full h-full block"></canvas>
+
+      <!-- Bottom Real-time DSP Readouts -->
+      <div class="absolute bottom-4 left-4 right-4 z-10 flex justify-around items-center font-mono text-[11px] bg-black/75 py-2 px-4 rounded-lg border border-slate-800 backdrop-blur text-slate-300">
+        <div>STATE: <strong id="lbl-phase" class="text-emerald-400">LUSH AMBIENT</strong></div>
+        <div>TEMPO: <strong id="lbl-bpm" class="text-cyan-400">100.0 BPM</strong></div>
+        <div>GRID LOCK: <strong class="text-emerald-400">16TH QUANTIZED</strong></div>
+        <div>REVERB: <strong id="lbl-reverb" class="text-amber-400">25%</strong></div>
+      </div>
+    </div>
+
+    <!-- Active Synth Stems Monitor -->
+    <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 font-mono text-xs">
+      <div id="stem-pad" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">AMBIENT PAD</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">Sub Sweep</span>
+      </div>
+      <div id="stem-bass" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">REESE BASS</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">90s Detuned</span>
+      </div>
+      <div id="stem-acid" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">ACID LEAD</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">303 Resonant</span>
+      </div>
+      <div id="stem-fm" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">FM PLUCK</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">Cyber Chime</span>
+      </div>
+      <div id="stem-beat" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">LIQUID DRUMS</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">Clean 90s Groove</span>
+      </div>
+      <div id="stem-glitch" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">MICRO-GLITCH</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">Stutter Engine</span>
+      </div>
+    </div>
+
+    <!-- Intensity Slider Card -->
+    <div class="bg-[#060a12] border border-cyan-900/50 rounded-xl p-5 flex flex-col gap-3 glow-cyan">
+      <div class="flex justify-between items-center">
+        <label for="slider-intensity" class="font-mono text-xs font-bold text-cyan-300 tracking-wider">
+          ADAPTIVE COMBAT INTENSITY (SEAMLESS LERP)
+        </label>
+        <span id="lbl-intensity-val" class="font-orbitron font-bold text-xl text-cyan-400">15%</span>
+      </div>
+
+      <input id="slider-intensity" type="range" min="0" max="100" value="15" class="w-full h-3 rounded-lg cursor-pointer">
+
+      <div class="flex justify-between font-mono text-[10px] text-slate-500">
+        <span>0% (Ambient Drone)</span>
+        <span>30% (+Reese Sub)</span>
+        <span>55% (+Acid & FM Synths)</span>
+        <span>100% (Climax Glitches & Reverb Wash)</span>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs for Log & Engine Code SDK -->
+    <div class="bg-[#020306] border border-emerald-900/50 rounded-xl p-4 font-mono text-xs text-emerald-400/90 h-32 flex flex-col gap-2">
+      <div class="flex border-b border-emerald-950 pb-2 gap-4">
+        <button id="tab-log" class="text-emerald-400 font-bold border-b-2 border-emerald-400 pb-0.5">ENGINE LOG</button>
+        <button id="tab-sdk" class="text-slate-500 hover:text-slate-300 pb-0.5">GAME INTEGRATION SDK</button>
+      </div>
+
+      <!-- Panel 1: Terminal Log -->
+      <div id="panel-log" class="flex-1 overflow-y-auto flex flex-col gap-1 pr-1">
+        <div id="log-output">
+          <div>> phr34kr Engine v1.0 ready. Hex-Procedural Track Naming active.</div>
+        </div>
+      </div>
+
+      <!-- Panel 2: SDK Code -->
+      <div id="panel-sdk" class="hidden flex-1 overflow-y-auto bg-black/60 p-2 rounded text-[10px] text-slate-300 font-mono">
+        <p class="text-purple-400 mb-1">// Hex-based track title generator snippet:</p>
+<pre class="text-emerald-300 font-mono"><code>class Phr34krAudioEngine {
+  generateHexTrackTitle(seedVal) {
+    const prefixes = ['NEURAL', 'DAEMON', 'PROTOCOL', 'CYBER', 'GHOST', 'SIGNAL', 'MATRIX', 'VECTOR', 'PHR34K', 'SYNAPSE', 'OVERDRIVE', 'GRID', 'HEX', 'KERNEL', 'ICE', 'VOID'];
+    const suffixes = ['DRIFT', 'BREACH', 'ECHO', 'PULSE', 'SHADOW', 'STRIKE', 'FLOW', 'RUNNER', 'WAVE', 'STATIC', 'RESONANCE', 'GLITCH', 'SURGE', 'VORTEX', 'CASCADE', 'ZERO'];
+    
+    const hexStr = seedVal.toString(16).toUpperCase().padStart(4, '0');
+    const p = prefixes[(seedVal >> 12 & 0xF) % prefixes.length];
+    const s = suffixes[(seedVal >> 4 & 0xF) % suffixes.length];
+    
+    return `${p}_${s} [0x${hexStr}]`;
+  }
+}</code></pre>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    /* ===================================================================
+       phr34kr // SYNCHRONIZED MULTI-SYNTH PROCEDURAL AUDIO ENGINE
+       =================================================================== */
+
+    // --- PRNG Seed Generator ---
+    class PRNG {
+      constructor(seed) {
+        this.seed = seed % 2147483647;
+        if (this.seed <= 0) this.seed += 2147483646;
+      }
+      next() {
+        return this.seed = this.seed * 16807 % 2147483647;
+      }
+      nextFloat() {
+        return (this.next() - 1) / 2147483646;
+      }
+      choice(arr) {
+        return arr[Math.floor(this.nextFloat() * arr.length)];
+      }
+    }
+
+    // --- State Management ---
+    const state = {
+      engineRunning: false,
+      simulatingFight: false,
+      intensity: 15, // 0% to 100%
+      seed: 0x9F42,
+      trackTitle: '',
+      scaleName: 'Dorian Cyber',
+      scaleNotes: [],
+      bassProgression: [],
+
+      // Precise Lookahead Quantization Scheduler
+      currentBpm: 100,
+      targetBpm: 100,
+      nextNoteTime: 0.0,
+      current16thStep: 0,
+      schedulerTimerId: null,
+
+      // Fight Simulator Timer
+      simDurationSec: 0,
+      simElapsedSec: 0,
+      simTimerInterval: null,
+
+      // Active Stems
+      layers: {
+        pad: true,
+        bass: false,
+        acid: false,
+        fmPluck: false,
+        liquidBeat: false,
+        glitch: false
+      }
+    };
+
+    // Scaled Musical Presets
+    const SCALE_PRESETS = [
+      { name: 'Dorian Cyber',     notes: [26, 29, 31, 33, 36,  38, 41, 43, 45, 48,  50] },
+      { name: 'Phrygian Dark',   notes: [24, 25, 28, 29, 31,  36, 37, 40, 41, 43,  48] },
+      { name: 'InSen Ninja',     notes: [26, 27, 31, 33, 36,  38, 39, 43, 45, 48,  50] },
+      { name: 'Minor Pentatonic', notes: [28, 31, 33, 35, 38,  40, 43, 45, 47, 50,  52] }
+    ];
+
+    function mtof(midi) {
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    // Hex-Based Procedural Name Generator
+    function generateHexTrackTitle(seedVal) {
+      const prefixes = [
+        'NEURAL', 'DAEMON', 'PROTOCOL', 'CYBER', 
+        'GHOST', 'SIGNAL', 'MATRIX', 'VECTOR', 
+        'PHR34K', 'SYNAPSE', 'OVERDRIVE', 'GRID', 
+        'HEX', 'KERNEL', 'ICE', 'VOID'
+      ];
+      
+      const suffixes = [
+        'DRIFT', 'BREACH', 'ECHO', 'PULSE', 
+        'SHADOW', 'STRIKE', 'FLOW', 'RUNNER', 
+        'WAVE', 'STATIC', 'RESONANCE', 'GLITCH', 
+        'SURGE', 'VORTEX', 'CASCADE', 'ZERO'
+      ];
+
+      const hexStr = seedVal.toString(16).toUpperCase().padStart(4, '0');
+      
+      const pIdx = (seedVal >> 12) & 0xF;
+      const sIdx = (seedVal >> 4) & 0xF;
+
+      const prefix = prefixes[pIdx % prefixes.length];
+      const suffix = suffixes[sIdx % suffixes.length];
+
+      return `${prefix}_${suffix} [0x${hexStr}]`;
+    }
+
+    // Generate Procedural Track Seed
+    function generateTrackFromSeed(seedVal) {
+      state.seed = seedVal;
+      const rng = new PRNG(seedVal);
+
+      state.trackTitle = generateHexTrackTitle(seedVal);
+
+      const preset = rng.choice(SCALE_PRESETS);
+      state.scaleName = preset.name;
+      state.scaleNotes = preset.notes;
+
+      state.bassProgression = [
+        preset.notes[0],
+        preset.notes[rng.choice([1, 2])],
+        preset.notes[rng.choice([3, 4])],
+        preset.notes[0]
+      ];
+
+      document.getElementById('lbl-track-title').innerText = state.trackTitle;
+      document.getElementById('lbl-scale-name').innerText = state.scaleName;
+
+      log(`> New Track Generated: ${state.trackTitle} [${state.scaleName}]`);
+    }
+
+    // --- Web Audio Synthesizer Setup ---
+    let audioCtx = null;
+    let masterGain = null;
+    let mainFilter = null;
+    let delayNode = null;
+    let delayGainNode = null;
+    let analyserNode = null;
+
+    function initAudioEngine() {
+      if (audioCtx) return;
+
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext();
+
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.70;
+
+      mainFilter = audioCtx.createBiquadFilter();
+      mainFilter.type = 'lowpass';
+      mainFilter.frequency.value = 320;
+      mainFilter.Q.value = 2.0;
+
+      delayNode = audioCtx.createDelay();
+      delayNode.delayTime.value = 0.34;
+      delayGainNode = audioCtx.createGain();
+      delayGainNode.gain.value = 0.25;
+
+      delayNode.connect(delayGainNode);
+      delayGainNode.connect(delayNode);
+
+      analyserNode = audioCtx.createAnalyser();
+      analyserNode.fftSize = 256;
+
+      masterGain.connect(mainFilter);
+      mainFilter.connect(analyserNode);
+      mainFilter.connect(delayNode);
+      delayNode.connect(analyserNode);
+
+      analyserNode.connect(audioCtx.destination);
+      log('> phr34kr Web Audio Engine initialized.');
+    }
+
+    /* ===================================================================
+       EXPANDED SYNTH PALETTE (PAD, REESE, 303 ACID, FM PLUCK, DRUMS)
+       =================================================================== */
+
+    function playLushPad(freq, time) {
+      if (!audioCtx) return;
+
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc1.type = 'sine';
+      osc2.type = 'triangle';
+
+      osc1.frequency.setValueAtTime(freq, time);
+      osc2.frequency.setValueAtTime(freq * 1.5, time);
+
+      gain.gain.setValueAtTime(0.20, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 1.2);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(masterGain);
+
+      osc1.start(time);
+      osc2.start(time);
+      osc1.stop(time + 1.25);
+      osc2.stop(time + 1.25);
+    }
+
+    function playReeseBass(freq, time) {
+      if (!audioCtx) return;
+
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const subOsc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const reeseFilter = audioCtx.createBiquadFilter();
+
+      osc1.type = 'sawtooth';
+      osc2.type = 'sawtooth';
+      subOsc.type = 'sine';
+
+      const detuneAmount = 12 + (state.intensity * 0.1);
+      osc1.frequency.setValueAtTime(freq / 2, time);
+      osc1.detune.setValueAtTime(-detuneAmount, time);
+
+      osc2.frequency.setValueAtTime(freq / 2, time);
+      osc2.detune.setValueAtTime(detuneAmount, time);
+
+      subOsc.frequency.setValueAtTime(freq / 4, time);
+
+      reeseFilter.type = 'lowpass';
+      const cutoff = 220 + Math.pow(state.intensity / 100, 2) * 2400;
+      reeseFilter.frequency.setValueAtTime(cutoff, time);
+      reeseFilter.Q.value = 3.5;
+
+      gain.gain.setValueAtTime(0.35, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.35);
+
+      osc1.connect(reeseFilter);
+      osc2.connect(reeseFilter);
+      subOsc.connect(gain);
+      reeseFilter.connect(gain);
+
+      gain.connect(masterGain);
+
+      osc1.start(time);
+      osc2.start(time);
+      subOsc.start(time);
+
+      osc1.stop(time + 0.38);
+      osc2.stop(time + 0.38);
+      subOsc.stop(time + 0.38);
+    }
+
+    function playAcidLead(freq, time) {
+      if (!audioCtx) return;
+
+      const osc = audioCtx.createOscillator();
+      const filter = audioCtx.createBiquadFilter();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, time);
+
+      filter.type = 'lowpass';
+      filter.Q.value = 8.0;
+      const baseEnv = 400 + Math.pow(state.intensity / 100, 2) * 4500;
+      filter.frequency.setValueAtTime(baseEnv, time);
+      filter.frequency.exponentialRampToValueAtTime(300, time + 0.18);
+
+      gain.gain.setValueAtTime(0.22, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.20);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+
+      osc.start(time);
+      osc.stop(time + 0.22);
+    }
+
+    function playFmPluck(freq, time) {
+      if (!audioCtx) return;
+
+      const carrier = audioCtx.createOscillator();
+      const modulator = audioCtx.createOscillator();
+      const modGain = audioCtx.createGain();
+      const gain = audioCtx.createGain();
+
+      carrier.type = 'sine';
+      modulator.type = 'sine';
+
+      carrier.frequency.setValueAtTime(freq * 2, time);
+      modulator.frequency.setValueAtTime(freq * 3.5, time);
+
+      modGain.gain.setValueAtTime(freq * 2.0, time);
+      modGain.gain.exponentialRampToValueAtTime(1.0, time + 0.15);
+
+      gain.gain.setValueAtTime(0.18, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.20);
+
+      modulator.connect(modGain);
+      modGain.connect(carrier.frequency);
+
+      carrier.connect(gain);
+      gain.connect(delayNode);
+      gain.connect(masterGain);
+
+      carrier.start(time);
+      modulator.start(time);
+      carrier.stop(time + 0.22);
+      modulator.stop(time + 0.22);
+    }
+
+    function playLiquidDrum(type, time) {
+      if (!audioCtx) return;
+
+      if (type === 'kick') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(125, time);
+        osc.frequency.exponentialRampToValueAtTime(36, time + 0.14);
+        gain.gain.setValueAtTime(0.70, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.start(time);
+        osc.stop(time + 0.15);
+      }
+
+      if (type === 'snare' || type === 'ghost-snare') {
+        const isGhost = type === 'ghost-snare';
+        const bodyOsc = audioCtx.createOscillator();
+        const bodyGain = audioCtx.createGain();
+        bodyOsc.frequency.setValueAtTime(200, time);
+        bodyOsc.frequency.exponentialRampToValueAtTime(85, time + 0.06);
+        bodyGain.gain.setValueAtTime(isGhost ? 0.10 : 0.40, time);
+        bodyGain.gain.exponentialRampToValueAtTime(0.001, time + 0.07);
+        bodyOsc.connect(bodyGain);
+        bodyGain.connect(masterGain);
+        bodyOsc.start(time);
+        bodyOsc.stop(time + 0.07);
+
+        const bufferSize = audioCtx.sampleRate * (isGhost ? 0.04 : 0.15);
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        const noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.value = 2000;
+
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(isGhost ? 0.08 : 0.28, time);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, time + (isGhost ? 0.04 : 0.15));
+
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(masterGain);
+        if (!isGhost) noiseGain.connect(delayNode);
+
+        noise.start(time);
+        noise.stop(time + (isGhost ? 0.04 : 0.15));
+      }
+
+      if (type === 'hihat') {
+        const bufferSize = audioCtx.sampleRate * 0.03;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = noiseBuffer;
+        const noiseFilter = audioCtx.createBiquadFilter();
+        noiseFilter.type = 'highpass';
+        noiseFilter.frequency.value = 7500;
+
+        const noiseGain = audioCtx.createGain();
+        noiseGain.gain.setValueAtTime(0.12, time);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.03);
+
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(masterGain);
+
+        noise.start(time);
+        noise.stop(time + 0.03);
+      }
+    }
+
+    function playRhythmicGlitch(time) {
+      if (!audioCtx) return;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      const freq = mtof(state.scaleNotes[Math.floor(Math.random() * 5) + 5]);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(freq * 1.5, time);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.5, time + 0.05);
+
+      gain.gain.setValueAtTime(0.15, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+
+      osc.connect(gain);
+      gain.connect(delayNode);
+      gain.connect(masterGain);
+
+      osc.start(time);
+      osc.stop(time + 0.06);
+    }
+
+    /* ===================================================================
+       SAMPLE-ACCURATE LOOKAHEAD SCHEDULER
+       =================================================================== */
+
+    function scheduler() {
+      while (state.nextNoteTime < audioCtx.currentTime + 0.1) {
+        scheduleQuantizedStep(state.current16thStep, state.nextNoteTime);
+        advance16thNote();
+      }
+    }
+
+    function advance16thNote() {
+      state.targetBpm = 100 + (state.intensity * 0.42);
+      state.currentBpm += (state.targetBpm - state.currentBpm) * 0.04;
+
+      const secondsPerBeat = 60.0 / state.currentBpm;
+      state.nextNoteTime += 0.25 * secondsPerBeat;
+      state.current16thStep = (state.current16thStep + 1) % 16;
+    }
+
+    function scheduleQuantizedStep(step, time) {
+      state.layers.pad = true;
+      state.layers.bass = state.intensity >= 20;
+      state.layers.acid = state.intensity >= 40;
+      state.layers.fmPluck = state.intensity >= 55;
+      state.layers.liquidBeat = state.intensity >= 45;
+      state.layers.glitch = state.intensity >= 75;
+
+      updateStemMonitorUI();
+
+      const barIndex = Math.floor(step / 4) % state.bassProgression.length;
+      const rootMidi = state.bassProgression[barIndex];
+
+      // 1. Ambient Pad Drone
+      if (state.layers.pad && step === 0) {
+        playLushPad(mtof(rootMidi + 12), time);
+      }
+
+      // 2. 90s Reese Bass
+      if (state.layers.bass) {
+        if (step % 4 === 0 || (state.layers.glitch && step % 2 === 0)) {
+          playReeseBass(mtof(rootMidi), time);
+        }
+      }
+
+      // 3. 303 Acid Lead
+      if (state.layers.acid) {
+        if (step % 2 === 0) {
+          const acidNote = state.scaleNotes[(step + 3) % state.scaleNotes.length];
+          playAcidLead(mtof(acidNote), time);
+        }
+      }
+
+      // 4. FM Cyber Pluck
+      if (state.layers.fmPluck) {
+        if (step % 2 === 1) {
+          const fmNote = state.scaleNotes[(step * 2 + 1) % state.scaleNotes.length];
+          playFmPluck(mtof(fmNote), time);
+        }
+      }
+
+      // 5. Liquid Drums
+      if (state.layers.liquidBeat) {
+        if (step === 0 || step === 10) playLiquidDrum('kick', time);
+        if (step === 4 || step === 12) playLiquidDrum('snare', time);
+        if (step === 7 || step === 15) playLiquidDrum('ghost-snare', time);
+        if (step % 2 === 1) playLiquidDrum('hihat', time);
+      } else if (state.intensity >= 15) {
+        if (step === 0) playLiquidDrum('kick', time);
+        if (step === 8) playLiquidDrum('snare', time);
+        if (step % 4 === 2) playLiquidDrum('hihat', time);
+      }
+
+      // 6. Micro Glitches
+      if (state.layers.glitch) {
+        if (step === 3 || step === 9 || step === 14) {
+          playRhythmicGlitch(time);
+        }
+      }
+    }
+
+    function renderFrame() {
+      if (!state.engineRunning) return;
+
+      if (masterGain && mainFilter && delayGainNode && audioCtx) {
+        const targetVol = 0.70 + (state.intensity / 100) * 0.15;
+        masterGain.gain.setTargetAtTime(targetVol, audioCtx.currentTime, 0.05);
+
+        const filterCutoff = 250 + Math.pow(state.intensity / 100, 2) * 8500;
+        mainFilter.frequency.setTargetAtTime(filterCutoff, audioCtx.currentTime, 0.05);
+
+        const reverbFeedback = 0.25 + (state.intensity / 100) * 0.40;
+        delayGainNode.gain.setTargetAtTime(reverbFeedback, audioCtx.currentTime, 0.05);
+
+        document.getElementById('lbl-bpm').innerText = `${state.currentBpm.toFixed(1)} BPM`;
+        document.getElementById('lbl-filter').innerText = `${Math.round(filterCutoff)} Hz`;
+        document.getElementById('lbl-reverb').innerText = `${Math.round(reverbFeedback * 100)}%`;
+      }
+
+      requestAnimationFrame(renderFrame);
+    }
+
+    /* ===================================================================
+       COMBAT SIMULATION LOGIC
+       =================================================================== */
+
+    function toggleCombatSimulation() {
+      state.simulatingFight = !state.simulatingFight;
+
+      const badge = document.getElementById('badge-sim');
+      const timerBox = document.getElementById('sim-timer-box');
+
+      if (state.simulatingFight) {
+        if (!state.engineRunning) toggleAudioEngine();
+
+        state.simDurationSec = Math.floor(60 + Math.random() * 31);
+        state.simElapsedSec = 0;
+
+        badge.innerText = 'ACTIVE';
+        badge.className = 'font-bold text-rose-400 animate-pulse';
+        timerBox.classList.remove('hidden');
+
+        log(`> COMBAT SIMULATION STARTED. Duration: ${state.simDurationSec}s`);
+
+        clearInterval(state.simTimerInterval);
+        state.simTimerInterval = setInterval(updateCombatSimTick, 1000);
+      } else {
+        stopCombatSimulation();
+      }
+    }
+
+    function stopCombatSimulation() {
+      state.simulatingFight = false;
+      clearInterval(state.simTimerInterval);
+
+      document.getElementById('badge-sim').innerText = 'OFF';
+      document.getElementById('badge-sim').className = 'font-bold text-emerald-400';
+      document.getElementById('sim-timer-box').classList.add('hidden');
+
+      setIntensity(15);
+      log('> Combat simulation finished.');
+    }
+
+    function updateCombatSimTick() {
+      state.simElapsedSec++;
+      const progress = state.simElapsedSec / state.simDurationSec;
+
+      const remainingSec = state.simDurationSec - state.simElapsedSec;
+      const mins = Math.floor(remainingSec / 60).toString().padStart(2, '0');
+      const secs = (remainingSec % 60).toString().padStart(2, '0');
+      document.getElementById('lbl-timer').innerText = `${mins}:${secs}`;
+
+      let targetIntensity = 15;
+      if (progress < 0.20) {
+        targetIntensity = 15 + (progress / 0.20) * 15;
+      } else if (progress < 0.50) {
+        targetIntensity = 30 + ((progress - 0.20) / 0.30) * 30;
+      } else if (progress < 0.85) {
+        targetIntensity = 60 + ((progress - 0.50) / 0.35) * 25;
+      } else if (progress < 0.98) {
+        targetIntensity = 85 + ((progress - 0.85) / 0.13) * 15;
+      } else {
+        targetIntensity = 20;
+      }
+
+      setIntensity(Math.round(targetIntensity));
+
+      if (state.simElapsedSec >= state.simDurationSec) {
+        log('🏆 MATCH COMPLETE! Victory.');
+        stopCombatSimulation();
+      }
+    }
+
+    function setIntensity(val) {
+      state.intensity = Math.max(0, Math.min(100, val));
+      document.getElementById('slider-intensity').value = state.intensity;
+      document.getElementById('lbl-intensity-val').innerText = `${state.intensity}%`;
+
+      const lblPhase = document.getElementById('lbl-phase');
+      if (state.intensity < 25) {
+        lblPhase.innerText = 'LUSH AMBIENT';
+        lblPhase.className = 'text-emerald-400 font-bold';
+      } else if (state.intensity < 45) {
+        lblPhase.innerText = '90s REESE GROOVE';
+        lblPhase.className = 'text-cyan-400 font-bold';
+      } else if (state.intensity < 70) {
+        lblPhase.innerText = '303 ACID & FM SYNTHS';
+        lblPhase.className = 'text-purple-400 font-bold';
+      } else {
+        lblPhase.innerText = 'CLIMAX GLITCH & REVERB WASH';
+        lblPhase.className = 'text-amber-400 font-bold animate-pulse';
+      }
+    }
+
+    function updateStemMonitorUI() {
+      const updateStem = (id, active) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const dot = el.querySelector('.dot');
+        if (active) {
+          el.className = 'p-2 border border-emerald-500/60 rounded bg-emerald-950/40 text-emerald-300 flex flex-col gap-0.5 font-bold';
+          dot.className = 'dot w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse';
+        } else {
+          el.className = 'p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5';
+          dot.className = 'dot w-1.5 h-1.5 rounded-full bg-slate-700';
+        }
+      };
+
+      updateStem('stem-pad', state.layers.pad);
+      updateStem('stem-bass', state.layers.bass);
+      updateStem('stem-acid', state.layers.acid);
+      updateStem('stem-fm', state.layers.fmPluck);
+      updateStem('stem-beat', state.layers.liquidBeat);
+      updateStem('stem-glitch', state.layers.glitch);
+    }
+
+    function toggleAudioEngine() {
+      initAudioEngine();
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      state.engineRunning = !state.engineRunning;
+
+      const btn = document.getElementById('btn-engine-toggle');
+      const text = document.getElementById('text-engine');
+      const statusDot = document.getElementById('status-indicator');
+
+      if (state.engineRunning) {
+        state.nextNoteTime = audioCtx.currentTime;
+        state.current16thStep = 0;
+
+        clearInterval(state.schedulerTimerId);
+        state.schedulerTimerId = setInterval(scheduler, 25);
+        requestAnimationFrame(renderFrame);
+
+        btn.classList.replace('bg-emerald-400', 'bg-rose-500');
+        text.innerText = 'STOP AUDIO';
+        statusDot.className = 'w-3.5 h-3.5 rounded-full bg-emerald-400 animate-ping';
+        log('> phr34kr Engine running (Quantized Lookahead Active).');
+      } else {
+        if (state.simulatingFight) stopCombatSimulation();
+
+        clearInterval(state.schedulerTimerId);
+        btn.classList.replace('bg-rose-500', 'bg-emerald-400');
+        text.innerText = 'START AUDIO';
+        statusDot.className = 'w-3.5 h-3.5 rounded-full bg-slate-600';
+        log('> phr34kr Engine suspended.');
+      }
+    }
+
+    function log(msg) {
+      const output = document.getElementById('log-output');
+      const div = document.createElement('div');
+      div.innerText = msg;
+      output.appendChild(div);
+      output.parentElement.scrollTop = output.parentElement.scrollHeight;
+    }
+
+    // --- Visualizer Canvas ---
+    const canvas = document.getElementById('canvas-vis');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function renderCanvas() {
+      requestAnimationFrame(renderCanvas);
+
+      ctx.fillStyle = '#020306';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+
+      ctx.strokeStyle = '#081220';
+      ctx.lineWidth = 1;
+      for (let y = 0; y < canvas.height; y += 18) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      const radius = 45 + (state.intensity * 0.6) + (Math.sin(Date.now() * 0.004) * 6);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = state.intensity > 70 ? '#f59e0b' : (state.intensity > 40 ? '#c084fc' : '#00ffaa');
+      ctx.lineWidth = 3 + (state.intensity / 25);
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = ctx.strokeStyle;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // --- DOM Event Listeners ---
+    document.getElementById('btn-engine-toggle').addEventListener('click', toggleAudioEngine);
+    document.getElementById('btn-sim-fight').addEventListener('click', toggleCombatSimulation);
+
+    document.getElementById('btn-new-game').addEventListener('click', () => {
+      const newSeed = Math.floor(Math.random() * 0xFFFFFF);
+      generateTrackFromSeed(newSeed);
+    });
+
+    document.getElementById('slider-intensity').addEventListener('input', (e) => {
+      if (state.simulatingFight) stopCombatSimulation();
+      setIntensity(parseInt(e.target.value));
+    });
+
+    document.getElementById('tab-log').addEventListener('click', (e) => {
+      document.getElementById('panel-log').classList.remove('hidden');
+      document.getElementById('panel-sdk').classList.add('hidden');
+      e.target.className = 'text-emerald-400 font-bold border-b-2 border-emerald-400 pb-0.5';
+      document.getElementById('tab-sdk').className = 'text-slate-500 hover:text-slate-300 pb-0.5';
+    });
+
+    document.getElementById('tab-sdk').addEventListener('click', (e) => {
+      document.getElementById('panel-sdk').classList.remove('hidden');
+      document.getElementById('panel-log').classList.add('hidden');
+      e.target.className = 'text-emerald-400 font-bold border-b-2 border-emerald-400 pb-0.5';
+      document.getElementById('tab-log').className = 'text-slate-500 hover:text-slate-300 pb-0.5';
+    });
+
+    // Init track seed & start canvas
+    generateTrackFromSeed(0x9F42);
+    renderCanvas();
+  </script>
+</body>
+</html>
