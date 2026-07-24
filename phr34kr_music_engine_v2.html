@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  phr34kr // Procedural Adaptive Music Engine v2.0
+  Copyright (C) 2026 phr34kr Authors
+
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>phr34kr // Procedural Adaptive Music Engine (GPL v3.0)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Orbitron:wght@500;700;900&display=swap');
+
+    body {
+      font-family: 'Fira Code', monospace;
+      background-color: #030408;
+      color: #00ffaa;
+      overflow-x: hidden;
+    }
+
+    .font-orbitron {
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    /* CRT Overlay effect */
+    .crt-overlay::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%);
+      background-size: 100% 4px;
+      z-index: 20;
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    .glow-box {
+      box-shadow: 0 0 15px rgba(0, 255, 170, 0.15), inset 0 0 15px rgba(0, 255, 170, 0.05);
+    }
+
+    .glow-cyan {
+      box-shadow: 0 0 20px rgba(6, 182, 212, 0.25);
+    }
+
+    input[type=range] {
+      accent-color: #06b6d4;
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #060910;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #00ffaa;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="crt-overlay min-h-screen flex flex-col bg-[#030408] text-slate-200 selection:bg-[#00ffaa] selection:text-black">
+
+  <!-- Streamlined Header -->
+  <header class="border-b border-emerald-900/50 bg-[#060a12]/90 px-6 py-4 flex flex-wrap items-center justify-between gap-4 z-30">
+    <div class="flex items-center gap-3">
+      <div id="status-indicator" class="w-3.5 h-3.5 rounded-full bg-slate-600 transition-all"></div>
+      <div>
+        <h1 class="font-orbitron font-bold text-xl text-emerald-400 tracking-wider flex items-center gap-2">
+          <span>phr34kr</span>
+          <span class="text-xs px-2 py-0.5 rounded border border-emerald-500/40 bg-emerald-950/40 text-cyan-300">v2.0</span>
+          <span class="text-[9px] px-1.5 py-0.5 rounded border border-slate-700 bg-slate-900/80 text-slate-400 font-mono">GPL-3.0</span>
+        </h1>
+        <p class="text-[11px] text-slate-400 font-mono">Procedural Adaptive Music Engine</p>
+      </div>
+    </div>
+
+    <!-- Main Controls -->
+    <div class="flex items-center gap-3 flex-wrap">
+      <button id="btn-engine-toggle" class="bg-emerald-400 hover:bg-emerald-300 active:scale-95 text-black font-orbitron font-bold px-5 py-2.5 rounded text-xs tracking-wider transition-all shadow-lg flex items-center gap-2">
+        <svg id="icon-play" class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <span id="text-engine">START AUDIO</span>
+      </button>
+
+      <button id="btn-new-game" class="border border-purple-500/60 text-purple-300 hover:bg-purple-500/20 active:scale-95 px-4 py-2.5 rounded text-xs font-mono transition-all flex items-center gap-2 font-bold">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        <span>NEW SEED</span>
+      </button>
+
+      <!-- Simulate Music Control Group -->
+      <div class="flex items-center bg-[#020409] border border-cyan-500/60 rounded overflow-hidden">
+        <button id="btn-dur-minus" title="Decrease duration by 15s" class="px-2.5 py-2 text-cyan-400 hover:bg-cyan-500/20 active:bg-cyan-500/40 text-xs font-mono font-bold border-r border-cyan-500/40 transition-colors">-15s</button>
+        <span id="lbl-sim-duration" class="px-3 text-xs font-mono text-cyan-300 font-bold min-w-[45px] text-center select-none">60s</span>
+        <button id="btn-dur-plus" title="Increase duration by 15s" class="px-2.5 py-2 text-cyan-400 hover:bg-cyan-500/20 active:bg-cyan-500/40 text-xs font-mono font-bold border-l border-cyan-500/40 transition-colors">+15s</button>
+        <button id="btn-sim-fight" class="px-4 py-2 text-xs font-mono text-cyan-300 hover:bg-cyan-500/20 active:scale-95 border-l border-cyan-500/40 font-bold flex items-center gap-2 transition-all">
+          <span>SIMULATE MUSIC</span>
+          <span id="badge-sim" class="text-emerald-400">OFF</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main View Area -->
+  <main class="flex-1 max-w-[1200px] w-full mx-auto p-4 sm:p-6 flex flex-col gap-4 justify-center">
+
+    <!-- Compact Dynamic Reactive Visualizer Canvas HUD -->
+    <div class="relative bg-[#020306] border border-emerald-900/60 rounded-xl overflow-hidden glow-box h-44 sm:h-48 flex flex-col items-center justify-center">
+      
+      <!-- Top HUD Readout -->
+      <div class="absolute top-3 left-4 right-4 z-10 flex justify-between items-center font-mono text-xs">
+        <div class="flex items-center gap-2 bg-black/70 px-3 py-1 rounded border border-emerald-900/80 backdrop-blur">
+          <span class="text-slate-400 text-[10px]">TITLE:</span>
+          <span id="lbl-track-title" class="text-purple-300 font-bold tracking-wider text-xs">NEURAL_DRIFT [0x9F42]</span>
+        </div>
+
+        <div id="sim-timer-box" class="hidden flex items-center gap-2 bg-black/70 px-3 py-1 rounded border border-cyan-900/80 backdrop-blur">
+          <span class="text-cyan-400 text-[10px]">TIMER:</span>
+          <span id="lbl-timer" class="text-cyan-300 font-bold text-xs">00:00</span>
+        </div>
+      </div>
+
+      <!-- Canvas Visualizer Ring -->
+      <canvas id="canvas-vis" class="w-full h-full block"></canvas>
+
+      <!-- Bottom Real-time DSP Readouts -->
+      <div class="absolute bottom-3 left-4 right-4 z-10 flex justify-around items-center font-mono text-[10px] sm:text-[11px] bg-black/75 py-1.5 px-3 rounded-lg border border-slate-800 backdrop-blur text-slate-300">
+        <div>GENRE: <strong id="lbl-archetype" class="text-purple-400">LIQUID JUNGLE</strong></div>
+        <div>LEAD INTRO: <strong id="lbl-intro-lead" class="text-cyan-400">MELODY FIRST</strong></div>
+        <div>STATE: <strong id="lbl-phase" class="text-emerald-400">LUSH AMBIENT</strong></div>
+        <div>TEMPO: <strong id="lbl-bpm" class="text-cyan-400">168.0 BPM</strong></div>
+      </div>
+    </div>
+
+    <!-- 6 Active Instrumental State Stems -->
+    <div class="grid grid-cols-2 sm:grid-cols-6 gap-2 font-mono text-xs">
+      <div id="stem-pad" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5 transition-all">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">AMBIENT PAD</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">Sub Sweep</span>
+      </div>
+      <div id="stem-bass" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5 transition-all">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">REESE BASS</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">Detuned Sub</span>
+      </div>
+      <div id="stem-acid" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5 transition-all">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">303 ACID LEAD</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">Resonant Sweep</span>
+      </div>
+      <div id="stem-fm" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5 transition-all">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">VOCAL CHOP / FM</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">Cyber Formant</span>
+      </div>
+      <div id="stem-beat" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5 transition-all">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">BREAKBEAT DRUMS</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">Amen / BigBeat</span>
+      </div>
+      <div id="stem-glitch" class="p-2 border border-slate-800 rounded bg-black/40 text-slate-600 flex flex-col gap-0.5 transition-all">
+        <div class="flex justify-between items-center"><span class="text-[10px] font-bold">MICRO-GLITCH</span><span class="dot w-1.5 h-1.5 rounded-full bg-slate-700"></span></div>
+        <span class="text-[9px] text-slate-500">Stutter Engine</span>
+      </div>
+    </div>
+
+    <!-- Adaptive Combat Intensity Slider Card -->
+    <div class="bg-[#060a12] border border-cyan-900/50 rounded-xl p-4 flex flex-col gap-2 glow-cyan">
+      <div class="flex justify-between items-center">
+        <label for="slider-intensity" class="font-mono text-xs font-bold text-cyan-300 tracking-wider">
+          ADAPTIVE COMBAT INTENSITY (SEAMLESS LERP)
+        </label>
+        <span id="lbl-intensity-val" class="font-orbitron font-bold text-xl text-cyan-400">15%</span>
+      </div>
+
+      <input id="slider-intensity" type="range" min="0" max="100" value="15" class="w-full h-3 rounded-lg cursor-pointer">
+
+      <div class="flex justify-between font-mono text-[10px] text-slate-500">
+        <span>0% (Random Intro Lead)</span>
+        <span>30% (+Secondary Stems)</span>
+        <span>60% (+Full Synths & Vocals)</span>
+        <span>100% (Climax Glitches & Full Beats)</span>
+      </div>
+    </div>
+
+    <!-- Real-time Audio Tweaker Studio Grid -->
+    <div class="bg-[#060a12] border border-emerald-900/50 rounded-xl p-4 flex flex-col gap-3">
+      <div class="flex justify-between items-center border-b border-emerald-950 pb-2">
+        <h2 class="font-orbitron font-bold text-xs text-emerald-400 tracking-wider flex items-center gap-2">
+          <span>DSP REAL-TIME TUNING STUDIO</span>
+        </h2>
+        <button id="btn-reset-dsp" class="text-[10px] font-mono text-slate-400 hover:text-rose-400 underline transition-colors">RESET TO DEFAULTS</button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs">
+        
+        <!-- Tweaker 1: Main Filter Cutoff -->
+        <div class="bg-black/50 p-3 rounded border border-slate-800/80 flex flex-col gap-1.5">
+          <div class="flex justify-between text-[11px]">
+            <span class="text-slate-400">Main Cutoff:</span>
+            <span id="lbl-val-cutoff" class="text-cyan-400 font-bold">1800 Hz</span>
+          </div>
+          <input id="tune-cutoff" type="range" min="300" max="8000" step="50" value="1800" class="w-full h-2 cursor-pointer">
+        </div>
+
+        <!-- Tweaker 2: Main Filter Resonance (Q) -->
+        <div class="bg-black/50 p-3 rounded border border-slate-800/80 flex flex-col gap-1.5">
+          <div class="flex justify-between text-[11px]">
+            <span class="text-slate-400">Filter Res (Q):</span>
+            <span id="lbl-val-res" class="text-cyan-400 font-bold">1.5</span>
+          </div>
+          <input id="tune-res" type="range" min="0.1" max="15.0" step="0.1" value="1.5" class="w-full h-2 cursor-pointer">
+        </div>
+
+        <!-- Tweaker 3: Delay Feedback -->
+        <div class="bg-black/50 p-3 rounded border border-slate-800/80 flex flex-col gap-1.5">
+          <div class="flex justify-between text-[11px]">
+            <span class="text-slate-400">Delay Feedback:</span>
+            <span id="lbl-val-delay" class="text-cyan-400 font-bold">10%</span>
+          </div>
+          <input id="tune-delay" type="range" min="0" max="75" step="1" value="10" class="w-full h-2 cursor-pointer">
+        </div>
+
+        <!-- Tweaker 4: Drive / Gain Boost -->
+        <div class="bg-black/50 p-3 rounded border border-slate-800/80 flex flex-col gap-1.5">
+          <div class="flex justify-between text-[11px]">
+            <span class="text-slate-400">Synth Drive Gain:</span>
+            <span id="lbl-val-drive" class="text-cyan-400 font-bold">1.0x</span>
+          </div>
+          <input id="tune-drive" type="range" min="0.5" max="3.0" step="0.1" value="1.0" class="w-full h-2 cursor-pointer">
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Quick Saved Songs Library Shelf -->
+    <div class="bg-[#060a12] border border-purple-900/40 rounded-xl p-3 flex flex-col gap-2">
+      <div class="flex justify-between items-center border-b border-purple-950 pb-1.5">
+        <span class="font-orbitron font-bold text-xs text-purple-300">SAVED SONG LIBRARY</span>
+        <button id="btn-save-current" class="px-2.5 py-1 bg-purple-950 hover:bg-purple-800 border border-purple-500/60 rounded text-[10px] text-purple-200 font-bold active:scale-95 transition-all flex items-center gap-1">
+          <span>+ SAVE CURRENT SONG</span>
+        </button>
+      </div>
+      <div id="library-shelf" class="flex gap-2 overflow-x-auto py-1 text-[11px] font-mono min-h-[36px] items-center">
+        <span class="text-slate-600 italic text-[10px]">No saved songs yet. Hit "+ SAVE CURRENT SONG" to save your favorite seeds & settings.</span>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs for Custom Code Inspector / Terminal Log / SDK -->
+    <div class="bg-[#020306] border border-emerald-900/50 rounded-xl p-4 font-mono text-xs text-emerald-400/90 h-52 flex flex-col gap-2">
+      <div class="flex justify-between items-center border-b border-emerald-950 pb-2">
+        <div class="flex gap-4">
+          <button id="tab-code" class="text-emerald-400 font-bold border-b-2 border-emerald-400 pb-0.5">SONG & DSP CODE INSPECTOR</button>
+          <button id="tab-log" class="text-slate-500 hover:text-slate-300 pb-0.5">ENGINE LOG</button>
+          <button id="tab-sdk" class="text-slate-500 hover:text-slate-300 pb-0.5">GAME SDK</button>
+        </div>
+        <div id="code-actions" class="flex gap-2">
+          <button id="btn-copy-code" class="px-2.5 py-1 bg-emerald-950 hover:bg-emerald-800 border border-emerald-600/60 rounded text-[10px] text-emerald-300 font-bold active:scale-95 transition-all">COPY SONG & SETTINGS</button>
+          <button id="btn-apply-code" class="px-2.5 py-1 bg-cyan-950 hover:bg-cyan-800 border border-cyan-600/60 rounded text-[10px] text-cyan-300 font-bold active:scale-95 transition-all">APPLY / LOAD SONG CODE</button>
+        </div>
+      </div>
+
+      <!-- Panel 1: Profile JSON Code Inspector & Importer -->
+      <div id="panel-code" class="flex-1 overflow-hidden flex flex-col">
+        <textarea id="txt-code-json" class="w-full h-full bg-black/80 border border-slate-800 p-2 text-[11px] font-mono text-emerald-300 rounded focus:outline-none focus:border-cyan-500 resize-none selection:bg-cyan-500 selection:text-black" spellcheck="false"></textarea>
+      </div>
+
+      <!-- Panel 2: Terminal Log -->
+      <div id="panel-log" class="hidden flex-1 overflow-y-auto flex flex-col gap-1 pr-1">
+        <div id="log-output">
+          <div>> phr34kr Engine v2.0 ready [Licensed under GNU GPL v3.0].</div>
+        </div>
+      </div>
+
+      <!-- Panel 3: SDK Code -->
+      <div id="panel-sdk" class="hidden flex-1 overflow-y-auto bg-black/60 p-2 rounded text-[10px] text-slate-300 font-mono">
+<pre class="text-emerald-300 font-mono"><code>// phr34kr Web Audio SDK custom song & setting import:
+// Licensed under GNU General Public License v3.0
+const audio = new Phr34krAudioEngine();
+audio.init();
+
+// Import song composition + custom DSP parameters:
+audio.loadSongProfile({
+  seed: 40770,
+  trackTitle: "NEURAL_DRIFT [0x9F42]",
+  dspSettings: { cutoff: 2400, res: 4.2, delayFeedback: 10, drive: 1.2 }
+});
+</code></pre>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast-msg" class="fixed bottom-6 right-6 bg-cyan-950 border border-cyan-500/80 text-cyan-300 px-4 py-2.5 rounded-lg text-xs font-mono shadow-2xl opacity-0 pointer-events-none transition-all duration-300 z-50">
+    Song & Settings Copied to Clipboard!
+  </div>
+
+  <script>
+    /* ===================================================================
+       phr34kr // PROCEDURAL ADAPTIVE MUSIC ENGINE v2.0
+       Licensed under GNU General Public License v3.0 (GNU GPLv3)
+       =================================================================== */
+
+    class PRNG {
+      constructor(seed) {
+        this.seed = seed % 2147483647;
+        if (this.seed <= 0) this.seed += 2147483646;
+      }
+      next() {
+        return this.seed = this.seed * 16807 % 2147483647;
+      }
+      nextFloat() {
+        return (this.next() - 1) / 2147483646;
+      }
+      choice(arr) {
+        return arr[Math.floor(this.nextFloat() * arr.length)];
+      }
+    }
+
+    const ARCHETYPES = [
+      { id: 'LIQUID_JUNGLE', name: 'LIQUID JUNGLE', bpm: 168, scaleIdx: 0, drumStyle: 'jungle' },
+      { id: 'ACID_BIGBEAT', name: 'ACID BIG BEAT', bpm: 140, scaleIdx: 1, drumStyle: 'bigbeat' },
+      { id: 'CYBER_BREAKCORE', name: 'CYBER BREAKCORE', bpm: 174, scaleIdx: 2, drumStyle: 'breakcore' },
+      { id: 'EUPHORIC_DRIFT', name: 'EUPHORIC DRIFT', bpm: 128, scaleIdx: 3, drumStyle: 'chill' }
+    ];
+
+    const INTRO_STYLES = [
+      { id: 'MELODY', label: 'MELODY FIRST', primaryStem: 'fmPluck' },
+      { id: 'DRUMS', label: 'DRUMS FIRST', primaryStem: 'liquidBeat' },
+      { id: 'BASS', label: 'BASS FIRST', primaryStem: 'bass' },
+      { id: 'ACID', label: 'ACID FIRST', primaryStem: 'acid' },
+      { id: 'PAD', label: 'PAD AMBIANCE', primaryStem: 'pad' }
+    ];
+
+    const SCALE_PRESETS = [
+      { name: 'Dorian Cyber',     notes: [26, 29, 31, 33, 36, 38, 41, 43, 45, 48, 50] },
+      { name: 'Phrygian Dark',   notes: [24, 25, 28, 29, 31, 36, 37, 40, 41, 43, 48] },
+      { name: 'InSen Ninja',     notes: [26, 27, 31, 33, 36, 38, 39, 43, 45, 48, 50] },
+      { name: 'Minor Pentatonic', notes: [28, 31, 33, 35, 38, 40, 43, 45, 47, 50, 52] }
+    ];
+
+    const DEFAULT_DSP = {
+      cutoff: 1800,
+      res: 1.5,
+      delayFeedback: 10,
+      drive: 1.0
+    };
+
+    function mtof(midi) {
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    function log(msg) {
+      const out = document.getElementById('log-output');
+      const div = document.createElement('div');
+      div.innerText = msg;
+      out.appendChild(div);
+      out.scrollTop = out.scrollHeight;
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast-msg');
+      toast.innerText = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2500);
+    }
+
+    const state = {
+      engineRunning: false,
+      simulatingFight: false,
+      intensity: 15,
+      seed: 0x9F42,
+      trackTitle: '',
+      archetype: ARCHETYPES[0],
+      introStyle: INTRO_STYLES[0],
+      scaleNotes: [],
+      bassProgression: [],
+
+      currentBpm: 168,
+      nextNoteTime: 0.0,
+      current16thStep: 0,
+      schedulerTimerId: null,
+
+      configuredSimDurationSec: 60,
+      simDurationSec: 60,
+      simElapsedSec: 0,
+      simTimerInterval: null,
+
+      savedLibrary: [],
+
+      dsp: { ...DEFAULT_DSP },
+
+      layers: {
+        pad: false,
+        bass: false,
+        acid: false,
+        fmPluck: false,
+        liquidBeat: false,
+        glitch: false
+      }
+    };
+
+    function generateHexTrackTitle(seedVal) {
+      const prefixes = ['NEURAL', 'DAEMON', 'PROTOCOL', 'CYBER', 'GHOST', 'SIGNAL', 'MATRIX', 'VECTOR', 'PHR34K', 'SYNAPSE', 'OVERDRIVE', 'GRID', 'HEX', 'KERNEL', 'ICE', 'VOID'];
+      const suffixes = ['DRIFT', 'BREACH', 'ECHO', 'PULSE', 'SHADOW', 'STRIKE', 'FLOW', 'RUNNER', 'WAVE', 'STATIC', 'RESONANCE', 'GLITCH', 'SURGE', 'VORTEX', 'CASCADE', 'ZERO'];
+      const hexStr = seedVal.toString(16).toUpperCase().padStart(4, '0');
+      const p = prefixes[(seedVal >> 12 & 0xF) % prefixes.length];
+      const s = suffixes[(seedVal >> 4 & 0xF) % suffixes.length];
+      return `${p}_${s} [0x${hexStr}]`;
+    }
+
+    function generateTrackFromSeed(seedVal) {
+      state.seed = seedVal;
+      const rng = new PRNG(seedVal);
+      state.trackTitle = generateHexTrackTitle(seedVal);
+      state.archetype = rng.choice(ARCHETYPES);
+      state.introStyle = rng.choice(INTRO_STYLES);
+
+      const preset = SCALE_PRESETS[state.archetype.scaleIdx];
+      state.scaleNotes = preset.notes;
+      state.currentBpm = state.archetype.bpm;
+
+      state.bassProgression = [
+        preset.notes[0],
+        preset.notes[rng.choice([1, 2])],
+        preset.notes[rng.choice([3, 4])],
+        preset.notes[0]
+      ];
+
+      document.getElementById('lbl-track-title').innerText = state.trackTitle;
+      document.getElementById('lbl-archetype').innerText = state.archetype.name;
+      document.getElementById('lbl-intro-lead').innerText = state.introStyle.label;
+      document.getElementById('lbl-bpm').innerText = `${state.currentBpm.toFixed(1)} BPM`;
+
+      log(`> Track Generated: ${state.trackTitle} | Genre: ${state.archetype.name} | Intro: ${state.introStyle.label}`);
+      syncCodeInspectorJSON();
+    }
+
+    let audioCtx = null;
+    let masterGain = null;
+    let mainFilter = null;
+    let delayNode = null;
+    let delayGainNode = null;
+    let analyserNode = null;
+
+    function initAudioEngine() {
+      if (audioCtx) return;
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext();
+
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.70;
+
+      mainFilter = audioCtx.createBiquadFilter();
+      mainFilter.type = 'lowpass';
+      mainFilter.frequency.value = state.dsp.cutoff;
+      mainFilter.Q.value = state.dsp.res;
+
+      delayNode = audioCtx.createDelay();
+      delayNode.delayTime.value = 0.25;
+      delayGainNode = audioCtx.createGain();
+      delayGainNode.gain.value = state.dsp.delayFeedback / 100;
+
+      delayNode.connect(delayGainNode);
+      delayGainNode.connect(delayNode);
+
+      analyserNode = audioCtx.createAnalyser();
+      analyserNode.fftSize = 256;
+
+      masterGain.connect(mainFilter);
+      mainFilter.connect(analyserNode);
+      mainFilter.connect(delayNode);
+      delayNode.connect(analyserNode);
+      analyserNode.connect(audioCtx.destination);
+
+      log('> phr34kr Audio Context initialized.');
+    }
+
+    function applyLiveDspSettings() {
+      if (!audioCtx) return;
+      mainFilter.frequency.setValueAtTime(state.dsp.cutoff, audioCtx.currentTime);
+      mainFilter.Q.setValueAtTime(state.dsp.res, audioCtx.currentTime);
+      delayGainNode.gain.setValueAtTime(state.dsp.delayFeedback / 100, audioCtx.currentTime);
+      syncCodeInspectorJSON();
+    }
+
+    function syncCodeInspectorJSON() {
+      const songProfile = {
+        app: "phr34kr_adaptive_music_profile",
+        version: "2.0",
+        license: "GNU General Public License v3.0",
+        songData: {
+          seed: state.seed,
+          trackTitle: state.trackTitle,
+          archetypeId: state.archetype.id,
+          introStyleId: state.introStyle.id,
+          bpm: state.currentBpm
+        },
+        dspSettings: state.dsp
+      };
+      document.getElementById('txt-code-json').value = JSON.stringify(songProfile, null, 2);
+    }
+
+    function triggerClimaxOutroCrash() {
+      if (!audioCtx) return;
+      log('> Triggering Climax Outro Crash and Reverb Tail...');
+
+      const now = audioCtx.currentTime;
+
+      if (state.archetype.id === 'LIQUID_JUNGLE' || state.archetype.id === 'CYBER_BREAKCORE') {
+        const subOsc = audioCtx.createOscillator();
+        const subGain = audioCtx.createGain();
+        subOsc.frequency.setValueAtTime(160, now);
+        subOsc.frequency.exponentialRampToValueAtTime(30, now + 1.2);
+
+        subGain.gain.setValueAtTime(0.9 * state.dsp.drive, now);
+        subGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+
+        subOsc.connect(subGain);
+        subGain.connect(masterGain);
+        subOsc.start(now);
+        subOsc.stop(now + 1.6);
+
+        playSnare(now, false);
+        playSnare(now + 0.05, true);
+        playSnare(now + 0.1, false);
+      } else {
+        const note = state.scaleNotes[state.scaleNotes.length - 1];
+        playVocalFormantSynth(mtof(note + 24), now);
+        playVocalFormantSynth(mtof(note + 36), now + 0.08);
+        playAcidLead(mtof(note), now);
+      }
+
+      masterGain.gain.setValueAtTime(0.70, now);
+      masterGain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+
+      setTimeout(() => {
+        if (audioCtx) {
+          masterGain.gain.setValueAtTime(0.70, audioCtx.currentTime);
+        }
+      }, 2600);
+    }
+
+    function playLushPad(freq, time) {
+      if (!audioCtx) return;
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc1.type = 'sine';
+      osc2.type = 'triangle';
+      osc1.frequency.setValueAtTime(freq, time);
+      osc2.frequency.setValueAtTime(freq * 1.5, time);
+
+      gain.gain.setValueAtTime(0.18 * state.dsp.drive, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 1.2);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(masterGain);
+
+      osc1.start(time);
+      osc2.start(time);
+      osc1.stop(time + 1.25);
+      osc2.stop(time + 1.25);
+    }
+
+    function playReeseBass(freq, time) {
+      if (!audioCtx) return;
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const subOsc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const reeseFilter = audioCtx.createBiquadFilter();
+
+      osc1.type = 'sawtooth';
+      osc2.type = 'sawtooth';
+      subOsc.type = 'sine';
+
+      const detuneAmount = 10 + (state.intensity * 0.15);
+      osc1.frequency.setValueAtTime(freq / 2, time);
+      osc1.detune.setValueAtTime(-detuneAmount, time);
+      osc2.frequency.setValueAtTime(freq / 2, time);
+      osc2.detune.setValueAtTime(detuneAmount, time);
+      subOsc.frequency.setValueAtTime(freq / 4, time);
+
+      reeseFilter.type = 'lowpass';
+      const cutoff = 200 + Math.pow(state.intensity / 100, 2) * 2800;
+      reeseFilter.frequency.setValueAtTime(cutoff, time);
+      reeseFilter.Q.value = 3.0;
+
+      gain.gain.setValueAtTime(0.35 * state.dsp.drive, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.35);
+
+      osc1.connect(reeseFilter);
+      osc2.connect(reeseFilter);
+      reeseFilter.connect(gain);
+      subOsc.connect(gain);
+      gain.connect(masterGain);
+
+      osc1.start(time); osc2.start(time); subOsc.start(time);
+      osc1.stop(time + 0.38); osc2.stop(time + 0.38); subOsc.stop(time + 0.38);
+    }
+
+    function playAcidLead(freq, time) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const filter = audioCtx.createBiquadFilter();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, time);
+
+      filter.type = 'lowpass';
+      filter.Q.value = 8.5;
+      const baseEnv = 350 + Math.pow(state.intensity / 100, 2) * 5000;
+      filter.frequency.setValueAtTime(baseEnv, time);
+      filter.frequency.exponentialRampToValueAtTime(250, time + 0.18);
+
+      gain.gain.setValueAtTime(0.22 * state.dsp.drive, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.20);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+
+      osc.start(time);
+      osc.stop(time + 0.22);
+    }
+
+    function playVocalFormantSynth(freq, time) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const formantFilter = audioCtx.createBiquadFilter();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq * 1.5, time);
+
+      formantFilter.type = 'bandpass';
+      formantFilter.frequency.setValueAtTime(800, time);
+      formantFilter.frequency.exponentialRampToValueAtTime(2200, time + 0.12);
+      formantFilter.Q.value = 5.0;
+
+      gain.gain.setValueAtTime(0.20 * state.dsp.drive, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.22);
+
+      osc.connect(formantFilter);
+      formantFilter.connect(gain);
+      gain.connect(delayNode);
+      gain.connect(masterGain);
+
+      osc.start(time);
+      osc.stop(time + 0.25);
+    }
+
+    function playKick(time) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.frequency.setValueAtTime(140, time);
+      osc.frequency.exponentialRampToValueAtTime(38, time + 0.08);
+
+      gain.gain.setValueAtTime(0.8 * state.dsp.drive, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+
+      osc.connect(gain);
+      gain.connect(masterGain);
+
+      osc.start(time);
+      osc.stop(time + 0.14);
+    }
+
+    function playSnare(time, isGhost = false) {
+      if (!audioCtx) return;
+      const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.1, audioCtx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < noiseBuffer.length; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      const whiteNoise = audioCtx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+
+      const noiseFilter = audioCtx.createBiquadFilter();
+      noiseFilter.type = 'highpass';
+      noiseFilter.frequency.value = 1000;
+
+      const gain = audioCtx.createGain();
+      const vol = (isGhost ? 0.15 : 0.45) * state.dsp.drive;
+      gain.gain.setValueAtTime(vol, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
+
+      whiteNoise.connect(noiseFilter);
+      noiseFilter.connect(gain);
+      gain.connect(masterGain);
+
+      whiteNoise.start(time);
+      whiteNoise.stop(time + 0.12);
+    }
+
+    function playHiHat(time, isOpen = false) {
+      if (!audioCtx) return;
+      const noiseBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.05, audioCtx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < noiseBuffer.length; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = noiseBuffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.value = 7000;
+
+      const gain = audioCtx.createGain();
+      const dur = isOpen ? 0.08 : 0.03;
+      gain.gain.setValueAtTime(0.2 * state.dsp.drive, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain);
+
+      noise.start(time);
+      noise.stop(time + dur + 0.01);
+    }
+
+    function scheduleStep(step, time) {
+      const stepInBar = step % 16;
+      const rootNote = state.bassProgression[Math.floor((step % 64) / 16) % state.bassProgression.length] || state.scaleNotes[0];
+
+      updateStemUI();
+
+      if (state.layers.pad && stepInBar % 8 === 0) {
+        playLushPad(mtof(rootNote), time);
+      }
+
+      if (state.layers.bass && (stepInBar === 0 || stepInBar === 6 || stepInBar === 10)) {
+        playReeseBass(mtof(rootNote), time);
+      }
+
+      if (state.layers.acid && (stepInBar % 2 === 0)) {
+        const note = state.scaleNotes[(step * 3) % state.scaleNotes.length];
+        playAcidLead(mtof(note + 12), time);
+      }
+
+      if (state.layers.fmPluck && (stepInBar % 4 === 2 || stepInBar === 15)) {
+        const note = state.scaleNotes[(step * 5) % state.scaleNotes.length];
+        playVocalFormantSynth(mtof(note + 24), time);
+      }
+
+      if (state.layers.liquidBeat) {
+        if (stepInBar === 0 || stepInBar === 10 || (state.archetype.drumStyle === 'bigbeat' && stepInBar === 8)) {
+          playKick(time);
+        }
+        if (stepInBar === 4 || stepInBar === 12) {
+          playSnare(time, false);
+        } else if (stepInBar === 7 || stepInBar === 15 || stepInBar === 2) {
+          playSnare(time, true);
+        }
+        if (stepInBar % 2 === 0) {
+          playHiHat(time, stepInBar % 4 === 2);
+        }
+      }
+
+      if (state.layers.glitch && state.intensity > 70 && Math.random() < 0.35) {
+        playSnare(time + 0.03, true);
+        playVocalFormantSynth(mtof(state.scaleNotes[step % state.scaleNotes.length] + 36), time + 0.03);
+      }
+    }
+
+    function scheduler() {
+      while (state.nextNoteTime < audioCtx.currentTime + 0.1) {
+        scheduleStep(state.current16thStep, state.nextNoteTime);
+        const secondsPer16th = (60.0 / state.currentBpm) / 4.0;
+        state.nextNoteTime += secondsPer16th;
+        state.current16thStep++;
+      }
+    }
+
+    function updateStemUI() {
+      const val = state.intensity;
+      const primary = state.introStyle.primaryStem;
+
+      state.layers.pad = false;
+      state.layers.bass = false;
+      state.layers.acid = false;
+      state.layers.fmPluck = false;
+      state.layers.liquidBeat = false;
+      state.layers.glitch = false;
+
+      state.layers[primary] = true;
+
+      if (val >= 20) {
+        state.layers.pad = true;
+        if (primary !== 'bass') state.layers.bass = true;
+      }
+      if (val >= 40) {
+        state.layers.liquidBeat = true;
+      }
+      if (val >= 60) {
+        state.layers.acid = true;
+        state.layers.fmPluck = true;
+      }
+      if (val >= 75) {
+        state.layers.glitch = true;
+      }
+
+      const mapping = [
+        { id: 'stem-pad', active: state.layers.pad },
+        { id: 'stem-bass', active: state.layers.bass },
+        { id: 'stem-acid', active: state.layers.acid },
+        { id: 'stem-fm', active: state.layers.fmPluck },
+        { id: 'stem-beat', active: state.layers.liquidBeat },
+        { id: 'stem-glitch', active: state.layers.glitch }
+      ];
+
+      mapping.forEach(m => {
+        const el = document.getElementById(m.id);
+        if (!el) return;
+        const dot = el.querySelector('.dot');
+        if (m.active) {
+          el.classList.remove('border-slate-800', 'text-slate-600', 'bg-black/40');
+          el.classList.add('border-emerald-500/80', 'text-emerald-300', 'bg-emerald-950/30');
+          if (dot) dot.className = 'dot w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#00ffaa]';
+        } else {
+          el.classList.remove('border-emerald-500/80', 'text-emerald-300', 'bg-emerald-950/30');
+          el.classList.add('border-slate-800', 'text-slate-600', 'bg-black/40');
+          if (dot) dot.className = 'dot w-1.5 h-1.5 rounded-full bg-slate-700';
+        }
+      });
+
+      let phaseStr = 'AMBIENT INTRO';
+      if (val >= 75) phaseStr = 'CLIMAX BREAKCORE';
+      else if (val >= 50) phaseStr = 'FULL MUSIC GROOVE';
+      else if (val >= 25) phaseStr = 'BUILDING RHYTHM';
+
+      document.getElementById('lbl-phase').innerText = phaseStr;
+    }
+
+    function renderVisualizer() {
+      const canvas = document.getElementById('canvas-vis');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const width = canvas.width = canvas.clientWidth;
+      const height = canvas.height = canvas.clientHeight;
+
+      requestAnimationFrame(renderVisualizer);
+
+      if (!analyserNode) {
+        ctx.clearRect(0, 0, width, height);
+        return;
+      }
+
+      const bufferLength = analyserNode.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      analyserNode.getByteFrequencyData(dataArray);
+
+      let sum = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        sum += dataArray[i];
+      }
+      const avgVol = sum / bufferLength;
+
+      ctx.fillStyle = 'rgba(2, 3, 6, 0.35)';
+      ctx.fillRect(0, 0, width, height);
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+      
+      const intensityFactor = state.intensity / 100;
+      const baseRadius = Math.min(width, height) / 5.2 + (intensityFactor * 12);
+      const strokeWidth = 1.5 + (avgVol / 25) + (intensityFactor * 2);
+
+      ctx.lineWidth = strokeWidth;
+      
+      if (state.intensity > 70) {
+        ctx.strokeStyle = '#c084fc';
+      } else if (state.intensity > 35) {
+        ctx.strokeStyle = '#22d3ee';
+      } else {
+        ctx.strokeStyle = '#00ffaa';
+      }
+
+      ctx.beginPath();
+      for (let i = 0; i < bufferLength; i++) {
+        const barHeight = (dataArray[i] / 255) * (20 + intensityFactor * 35);
+        const angle = (i / bufferLength) * Math.PI * 2;
+        const x = centerX + Math.cos(angle) * (baseRadius + barHeight);
+        const y = centerY + Math.sin(angle) * (baseRadius + barHeight);
+
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, Math.max(5, baseRadius * 0.45 + (avgVol * 0.15)), 0, Math.PI * 2);
+      ctx.fillStyle = state.intensity > 70 ? 'rgba(192, 132, 252, 0.25)' : 'rgba(0, 255, 170, 0.15)';
+      ctx.fill();
+    }
+
+    function updateDspInputsUI() {
+      document.getElementById('tune-cutoff').value = state.dsp.cutoff;
+      document.getElementById('lbl-val-cutoff').innerText = `${state.dsp.cutoff} Hz`;
+
+      document.getElementById('tune-res').value = state.dsp.res;
+      document.getElementById('lbl-val-res').innerText = `${state.dsp.res.toFixed(1)}`;
+
+      document.getElementById('tune-delay').value = state.dsp.delayFeedback;
+      document.getElementById('lbl-val-delay').innerText = `${state.dsp.delayFeedback}%`;
+
+      document.getElementById('tune-drive').value = state.dsp.drive;
+      document.getElementById('lbl-val-drive').innerText = `${state.dsp.drive.toFixed(1)}x`;
+
+      syncCodeInspectorJSON();
+    }
+
+    function renderSavedLibraryUI() {
+      const shelf = document.getElementById('library-shelf');
+      if (!shelf) return;
+
+      if (state.savedLibrary.length === 0) {
+        shelf.innerHTML = `<span class="text-slate-600 italic text-[10px]">No saved songs yet. Hit "+ SAVE CURRENT SONG" to save your favorite seeds & settings.</span>`;
+        return;
+      }
+
+      shelf.innerHTML = '';
+      state.savedLibrary.forEach((item, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'px-2.5 py-1 bg-black/60 hover:bg-purple-950/80 border border-purple-500/50 rounded text-purple-300 font-bold whitespace-nowrap active:scale-95 transition-all text-[10px] flex items-center gap-1';
+        btn.innerHTML = `<span>🎵 ${item.trackTitle}</span>`;
+        btn.addEventListener('click', () => {
+          loadSongFromProfileObject(item.profile);
+          showToast(`Loaded Song: ${item.trackTitle}`);
+        });
+        shelf.appendChild(btn);
+      });
+    }
+
+    function loadSongFromProfileObject(parsed) {
+      if (!parsed) return;
+      if (parsed.songData && parsed.songData.seed !== undefined) {
+        generateTrackFromSeed(parsed.songData.seed);
+      }
+      if (parsed.dspSettings) {
+        state.dsp = { ...state.dsp, ...parsed.dspSettings };
+        applyLiveDspSettings();
+        updateDspInputsUI();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      generateTrackFromSeed(state.seed);
+      renderVisualizer();
+      updateDspInputsUI();
+      renderSavedLibraryUI();
+
+      const btnToggle = document.getElementById('btn-engine-toggle');
+      btnToggle.addEventListener('click', () => {
+        initAudioEngine();
+        if (!state.engineRunning) {
+          audioCtx.resume();
+          state.engineRunning = true;
+          state.nextNoteTime = audioCtx.currentTime;
+          state.schedulerTimerId = setInterval(scheduler, 25);
+
+          document.getElementById('text-engine').innerText = 'PAUSE AUDIO';
+          document.getElementById('status-indicator').className = 'w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#00ffaa]';
+          log('> Audio Engine Started.');
+        } else {
+          state.engineRunning = false;
+          clearInterval(state.schedulerTimerId);
+          document.getElementById('text-engine').innerText = 'START AUDIO';
+          document.getElementById('status-indicator').className = 'w-3.5 h-3.5 rounded-full bg-slate-600';
+          log('> Audio Engine Paused.');
+        }
+      });
+
+      document.getElementById('btn-new-game').addEventListener('click', () => {
+        const newSeed = Math.floor(Math.random() * 0xFFFF);
+        generateTrackFromSeed(newSeed);
+      });
+
+      const slider = document.getElementById('slider-intensity');
+      slider.addEventListener('input', (e) => {
+        state.intensity = parseInt(e.target.value);
+        document.getElementById('lbl-intensity-val').innerText = `${state.intensity}%`;
+      });
+
+      document.getElementById('tune-cutoff').addEventListener('input', (e) => {
+        state.dsp.cutoff = parseInt(e.target.value);
+        document.getElementById('lbl-val-cutoff').innerText = `${state.dsp.cutoff} Hz`;
+        applyLiveDspSettings();
+        updateDspInputsUI();
+      });
+
+      document.getElementById('tune-res').addEventListener('input', (e) => {
+        state.dsp.res = parseFloat(e.target.value);
+        document.getElementById('lbl-val-res').innerText = `${state.dsp.res.toFixed(1)}`;
+        applyLiveDspSettings();
+        updateDspInputsUI();
+      });
+
+      document.getElementById('tune-delay').addEventListener('input', (e) => {
+        state.dsp.delayFeedback = parseInt(e.target.value);
+        document.getElementById('lbl-val-delay').innerText = `${state.dsp.delayFeedback}%`;
+        applyLiveDspSettings();
+        updateDspInputsUI();
+      });
+
+      document.getElementById('tune-drive').addEventListener('input', (e) => {
+        state.dsp.drive = parseFloat(e.target.value);
+        document.getElementById('lbl-val-drive').innerText = `${state.dsp.drive.toFixed(1)}x`;
+        updateDspInputsUI();
+      });
+
+      document.getElementById('btn-reset-dsp').addEventListener('click', () => {
+        state.dsp = { ...DEFAULT_DSP };
+        applyLiveDspSettings();
+        updateDspInputsUI();
+        log('> DSP Tweaker Settings reset to factory defaults.');
+        showToast('Reset to Default DSP Settings!');
+      });
+
+      document.getElementById('btn-copy-code').addEventListener('click', () => {
+        const codeTxt = document.getElementById('txt-code-json').value;
+        const tempTextarea = document.createElement('textarea');
+        tempTextarea.value = codeTxt;
+        document.body.appendChild(tempTextarea);
+        tempTextarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempTextarea);
+        showToast('Song & Settings Copied to Clipboard!');
+        log('> Exported Song Profile Code to clipboard.');
+      });
+
+      document.getElementById('btn-apply-code').addEventListener('click', () => {
+        try {
+          const raw = document.getElementById('txt-code-json').value;
+          const parsed = JSON.parse(raw);
+          if (parsed && (parsed.songData || parsed.dspSettings)) {
+            loadSongFromProfileObject(parsed);
+            log('> Custom Song & Settings successfully loaded!');
+            showToast('Loaded Song & DSP Code Successfully!');
+          } else {
+            showToast('Invalid JSON Format!');
+          }
+        } catch (err) {
+          showToast('JSON Syntax Error! Check Code.');
+          log('> Error parsing custom song code JSON.');
+        }
+      });
+
+      document.getElementById('btn-save-current').addEventListener('click', () => {
+        const profileObj = JSON.parse(document.getElementById('txt-code-json').value);
+        state.savedLibrary.push({
+          trackTitle: state.trackTitle,
+          profile: profileObj
+        });
+        renderSavedLibraryUI();
+        showToast(`Saved ${state.trackTitle} to Library!`);
+        log(`> Saved ${state.trackTitle} to Song Library.`);
+      });
+
+      document.getElementById('btn-dur-minus').addEventListener('click', () => {
+        if (state.configuredSimDurationSec > 15) {
+          state.configuredSimDurationSec -= 15;
+          document.getElementById('lbl-sim-duration').innerText = `${state.configuredSimDurationSec}s`;
+        }
+      });
+
+      document.getElementById('btn-dur-plus').addEventListener('click', () => {
+        state.configuredSimDurationSec += 15;
+        document.getElementById('lbl-sim-duration').innerText = `${state.configuredSimDurationSec}s`;
+      });
+
+      document.getElementById('btn-sim-fight').addEventListener('click', () => {
+        if (!state.engineRunning) {
+          btnToggle.click();
+        }
+
+        state.simulatingFight = !state.simulatingFight;
+        const badge = document.getElementById('badge-sim');
+        const timerBox = document.getElementById('sim-timer-box');
+
+        if (state.simulatingFight) {
+          badge.innerText = 'ON';
+          badge.className = 'text-cyan-400 font-bold animate-pulse';
+          timerBox.classList.remove('hidden');
+
+          state.simDurationSec = state.configuredSimDurationSec;
+          state.simElapsedSec = 0;
+
+          log(`> Starting Procedural Music Simulation (${state.simDurationSec}s)...`);
+
+          if (state.simTimerInterval) clearInterval(state.simTimerInterval);
+
+          state.simTimerInterval = setInterval(() => {
+            state.simElapsedSec++;
+            const remaining = Math.max(0, state.simDurationSec - state.simElapsedSec);
+
+            const progress = state.simElapsedSec / state.simDurationSec;
+            const targetIntensity = Math.min(95, Math.floor(15 + progress * 80));
+
+            slider.value = targetIntensity;
+            state.intensity = targetIntensity;
+            document.getElementById('lbl-intensity-val').innerText = `${targetIntensity}%`;
+
+            const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+            const secs = String(remaining % 60).padStart(2, '0');
+            document.getElementById('lbl-timer').innerText = `${mins}:${secs}`;
+
+            if (remaining <= 0) {
+              clearInterval(state.simTimerInterval);
+              state.simTimerInterval = null;
+              state.simulatingFight = false;
+              badge.innerText = 'OFF';
+              badge.className = 'text-emerald-400';
+              timerBox.classList.add('hidden');
+
+              triggerClimaxOutroCrash();
+
+              slider.value = 15;
+              state.intensity = 15;
+              document.getElementById('lbl-intensity-val').innerText = `15%`;
+
+              log('> Music Simulation Concluded with Outro Crash.');
+            }
+          }, 1000);
+        } else {
+          if (state.simTimerInterval) clearInterval(state.simTimerInterval);
+          badge.innerText = 'OFF';
+          badge.className = 'text-emerald-400';
+          timerBox.classList.add('hidden');
+        }
+      });
+
+      document.getElementById('tab-code').addEventListener('click', () => {
+        document.getElementById('panel-code').classList.remove('hidden');
+        document.getElementById('panel-log').classList.add('hidden');
+        document.getElementById('panel-sdk').classList.add('hidden');
+        document.getElementById('code-actions').classList.remove('hidden');
+
+        document.getElementById('tab-code').className = 'text-emerald-400 font-bold border-b-2 border-emerald-400 pb-0.5';
+        document.getElementById('tab-log').className = 'text-slate-500 hover:text-slate-300 pb-0.5';
+        document.getElementById('tab-sdk').className = 'text-slate-500 hover:text-slate-300 pb-0.5';
+      });
+
+      document.getElementById('tab-log').addEventListener('click', () => {
+        document.getElementById('panel-log').classList.remove('hidden');
+        document.getElementById('panel-code').classList.add('hidden');
+        document.getElementById('panel-sdk').classList.add('hidden');
+        document.getElementById('code-actions').classList.add('hidden');
+
+        document.getElementById('tab-log').className = 'text-emerald-400 font-bold border-b-2 border-emerald-400 pb-0.5';
+        document.getElementById('tab-code').className = 'text-slate-500 hover:text-slate-300 pb-0.5';
+        document.getElementById('tab-sdk').className = 'text-slate-500 hover:text-slate-300 pb-0.5';
+      });
+
+      document.getElementById('tab-sdk').addEventListener('click', () => {
+        document.getElementById('panel-sdk').classList.remove('hidden');
+        document.getElementById('panel-code').classList.add('hidden');
+        document.getElementById('panel-log').classList.add('hidden');
+        document.getElementById('code-actions').classList.add('hidden');
+
+        document.getElementById('tab-sdk').className = 'text-emerald-400 font-bold border-b-2 border-emerald-400 pb-0.5';
+        document.getElementById('tab-code').className = 'text-slate-500 hover:text-slate-300 pb-0.5';
+        document.getElementById('tab-log').className = 'text-slate-500 hover:text-slate-300 pb-0.5';
+      });
+    });
+  </script>
+</body>
+</html>
